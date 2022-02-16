@@ -3,29 +3,17 @@
 '''
 # =============================================================================
 Steps:-
-# 1. read image ids from the dataset path(Rrain, test, Val)
+# 1. read image ids from the dataset path(train, val, and test)
 # 2. Resize to 256 for getting mask predictions
 # 3. Load segmentation model and get masks
 # 4. Resize the mask to the original CXR img dimension
-# 5. Cropping RoI in the input CXR img about the lungs as per cnt detection in maks.
-# 6. Resize the cropped CXR img to the input image dimens : 256
+# 5. Cropping RoI in the input CXR img about the lungs as per cnt detection in masks
+# 6. Resize the cropped CXR img to the input image dimension : 256
 # 7. Data Aug
 # 8. Denoising - optional preprocessing integrated in Data Aug
 # 9. Feed in to the model and train - Early stopping
 # 10. Confusion matrix and evaluation on the various metrices
-# =============================================================================
-# =============================================================================
-# # Tweakable parameters:-
-# # 1. in_path : dirrectory of the train/val data
-# # 2. result_dir :Rename the Top subfolder, rest is Based on os. getcwd
-# # 3. batchsize
-# # 4. Epoch
-# # 5. modelname : only the unique name(based on feature and class) of the model to be added
-# # 6. dim : input dimensions of the images for the training.
-# # 7a. For On the Go (OTG) Aug: Use the "train_datagen" datagenerator with augmentation features on
-# # 7b. For Inplace Aug: Use the "test_datagen" datagenerator with all augmentation features off and only a pre-processing feature(rescale=1./255)
-# =============================================================================
-    
+# =============================================================================    
 '''
 from transfer_learning_models import TransferLearning as tl
 import pandas as pd
@@ -53,19 +41,7 @@ class TrainClassification:
         self.img_channels = 1
     
     def append_multiple_lines(self, file_name, lines_to_append):
-        '''
-        Opens an existing .txt file and adds line from the bottom to it.
-    
-        Parameters
-        ----------
-        file_name : name of the .txt file at the cuurent directory 
-        lines_to_append : lines to be added to the existing file
-    
-        Returns
-        -------
-        None.
-    
-        '''
+        '''Opens an existing .txt file and writes to it.'''
         with open(file_name, "a+") as file_object:
             appendEOL = False
             file_object.seek(0)
@@ -93,7 +69,6 @@ class TrainClassification:
         None.
     
         '''
-        #plot the training and validation accuracy and loss at each epoch
         loss = history.history['loss']
         val_loss = history.history['val_loss']
         epochs = range(1, len(loss) + 1)
@@ -125,6 +100,7 @@ class TrainClassification:
             pass
     
     def train_function(self):
+        '''Used to read datasets and train the model name specified by the user in the command line arguments'''
         img_size = [self.img_width, self.img_height]
         train_path = self.source_path + '/train/'
         val_path = self.source_path + '/val/'
@@ -233,7 +209,7 @@ class TrainClassification:
         except Exception as e:
             print("Exception due to ERROR: ", e)
 
-        # confusion matrix and midel evalusaiton
+        # confusion matrix and model evaluation
         eval(model, test_set, "test_set ", self.dest_path)
         model.evaluate(test_set, steps = test_set.samples, verbose =1)
         

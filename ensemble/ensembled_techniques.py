@@ -1,5 +1,21 @@
 # -*- coding: utf-8 -*-
 
+'''
+Builds ensembled models from weak transfer learning models to reduce generalization errors
+and limitaions of small dataset.
+Four ensmeble stratigies have been used:
+    1. Hard Voting
+    2. Simple Averaging (Soft Voting)
+    3. Weighted Averaging
+    4. Stacked Generalization using different meta learners:
+        a. CatBoost
+        b. XGBoost with RandomizedSearchCV for hyperparameter tuning
+        c. SVM Classifier
+        d. AdaBoost
+        e. LGBM 
+    5. Performance evaluation and comparison has been done using accuracy,
+       f1_score, MCC, AUC, and 95% AUC Confidence Interval.
+'''
 
 import pandas as pd
 import numpy as np
@@ -45,12 +61,14 @@ class EnsembleModels:
         
         
     def read_images(self):
+        '''Used to read test data set using Image Data Generator from Keras'''
         image_datagen = ImageDataGenerator(rescale=1./255)
         test_set = image_datagen.flow_from_directory(self.test_images_path, shuffle=False, target_size=self.img_size, batch_size=1, class_mode='categorical', interpolation = "bicubic")
         return test_set
     
     
     def load_trained_models(self):
+        '''Used to load saved classification models'''
         class_folders = glob(self.test_images_path + '/*')
         
         model1 = tl.vgg16_model(self.img_size, class_folders)
@@ -77,6 +95,7 @@ class EnsembleModels:
     
     
     def get_preds(self):
+        '''Used to get predictions on the test dataset for every model'''
         model1, model2, model3, model4, model5 = self.load_trained_models()
         ####### Getting level1 predictions i.e. prob scores for each class from each model
         models = [model1, model2, model3, model4, model5]
@@ -86,21 +105,22 @@ class EnsembleModels:
     
     
     def dump_preds(self):
+        '''Used to dump predictions in a pickle file so as to not to calculate it again and again'''
         preds = self.get_preds()
-        ### Storing the preds in pickle
         file = open('preds.pkl','wb')
         pickle.dump(preds, file)
         file.close()
 
   
-    def load_preds(self):     
-        ### Loading the preds from pickle
+    def load_preds(self):
+        '''Used to load predictions from the saved pickle file'''
         file = open('preds.pkl', 'rb')
         preds = pickle.load(file)
         file.close()
         return preds
                   
     def get_preds_argmax(self):
+        '''Used to calculate the prediction class for every model'''
         preds = self.load_preds()
         self. m1_classes=list(np.argmax(preds[0], axis=-1))
         self.m2_classes=list(np.argmax(preds[1], axis=-1))
@@ -110,7 +130,7 @@ class EnsembleModels:
 
 
     def hard_vote_ensemble(self): 
-        #### Hard Vote Ensemble 
+        '''Used to calculate hard vote ensemble'''
         individual_predictions=pd.DataFrame([self.m1_classes, self.m2_classes, self.m3_classes,
                                              self.m4_classes, self.m5_classes]).T
         individual_predictions["max_freq"]=[statistics.mode(individual_predictions.loc[i]) for i in individual_predictions.index]
@@ -119,7 +139,7 @@ class EnsembleModels:
     
     
     def average_ensemble(self):
-        ### Simple Average Ensemble
+        '''Used to calculate simple average ensemble of models'''
         preds_array=np.array(self.load_preds())
         summed = np.sum(preds_array, axis=0)
         ensemble_prediction_with_argmax = np.argmax(summed, axis=1)
@@ -128,8 +148,8 @@ class EnsembleModels:
     
     
     def weighted_average(self):
-        ####################################################################################
-        #Grid search for the best combination of weights that gives maximum acuracy in weighted average ensemble 
+        '''Used to calculate weighted average of all the models by 
+           using grid search based technique to get the best weights'''
         df = pd.DataFrame([])
         a = [range(1, 9),range(1, 9),range(1, 9),range(1, 9),range(1, 9)]
         combinations=list(itertools.product(*a))
@@ -158,6 +178,10 @@ class EnsembleModels:
     
     
     def stacked_generalization_xgboost_random_search_cv(self):
+        '''Used to build stacked generalization using xgboost as the meta learner
+           and leveraging RandomizedSearchCV for Hyperparameter tuning along with
+            Stratified k-fold approach'''
+           
         #Stacking the predictions together
         preds = self.load_preds()
         stackX = None
@@ -167,8 +191,7 @@ class EnsembleModels:
             else:
                 stackX = np.dstack((stackX, preds[i]))
         stackX = stackX.reshape((stackX.shape[0], stackX.shape[1]*stackX.shape[2]))
-        
-        ###################################################################
+
         #Hyperparameter tuning for XGBoost using RandomizedSearchCV
         X,y=pd.DataFrame(stackX),pd.DataFrame(self.read_images().classes)
         
@@ -204,6 +227,7 @@ class EnsembleModels:
         
         
     def cross_val(self, X, y, model):
+        '''Perform Stratified k-fold and calculate the metrics'''
         results_1=[]
         skf = StratifiedKFold(n_splits=3)
         for train_index,test_index in skf.split(X,y):
@@ -226,8 +250,18 @@ class EnsembleModels:
     
     
     def stacked_generalization_stratified_k_fold(self):
-        ####### Ensemble stacking using stratified k-fold
-        ##Using the best params received from the Randomized Search CV
+        '''Ensemble stacking using stratified k-fold'''
+        
+        '''Experimented with different Meta Learners:
+            a. CatBoost
+            b. XGBoost
+            c. SVM
+            d. AdaBoost
+            e. LGBM
+        '''
+        
+        '''Using the best params received from the Randomized Search CV for XGBoost'''
+
         preds = self.load_preds()
         stackX = None
         for i in range(0,len(preds)):
@@ -265,7 +299,8 @@ class EnsembleModels:
         
         
     def calculate_metrics(self):
-        ### Calculating the metrics for each base model & ensemble models as well
+        '''Calculating the metrics for each base model & ensemble models as well'''
+        
         test_set = self.read_images()
         m1_classes = self.m1_classes 
         m2_classes = self.m2_classes 
@@ -347,8 +382,7 @@ class EnsembleModels:
                                    roc_curve(test_set.classes, weighted_ensemble_prediction)[0],
                                  roc_curve(test_set.classes, weighted_ensemble_prediction)[1],
                                  roc_curve(test_set.classes, weighted_ensemble_prediction)[2]]
-        
-        
+           
         results_df=pd.DataFrame([vgg_res,resnet_res,inception_res,densenet_res,
                                  xception_res,hard_voting_res,average_ensemble_res,
                                  weighted_average_ensemble], 
@@ -359,7 +393,9 @@ class EnsembleModels:
         
         return results_df
 
+
     def trigger_functions(self):
+        '''Used to trigger functions'''
         self.dump_preds()
         self.get_preds_argmax()
         results_df = self.calculate_metrics()

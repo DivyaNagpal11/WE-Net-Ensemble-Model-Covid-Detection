@@ -15,7 +15,7 @@ parser.add_argument("-tp", "--test_path",
                     required=True, 
                     help="Test images Path eg:- mention test image dataset path you want to provide")
 parser.add_argument("-sm", "--saved_model", required=True,
-                    help="Saved Models Path eg:- provide path for saved models")
+                    help="Saved Models Path eg:- provide path for saved classification models")
 
 args = vars(parser.parse_args())
 

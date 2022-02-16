@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Feb 16 00:03:01 2022
 
-@author: DN067571
-"""
 from keras import backend as K
 import tensorflow as tf
 
@@ -13,6 +9,7 @@ class UNetModel:
         return
     
     def jaccard_coef(self, y_true, y_pred):
+        '''Used for calculating the Jaccard coefficient'''
         y_true_f = K.flatten(y_true)
         y_pred_f = K.flatten(y_pred)
         intersection = K.sum(y_true_f * y_pred_f)
@@ -20,11 +17,13 @@ class UNetModel:
 
 
     def jaccard_coef_loss(self, y_true, y_pred):
-        return -self.jaccard_coef(y_true, y_pred)  # -1 multiplied as we want to minimize this value as loss function
+        '''Multiplying jaccard coefficient with -1 to use it as a loss function and minimize it'''
+        return -self.jaccard_coef(y_true, y_pred) 
     
     
-    def get_model(self, IMG_HEIGHT,IMG_WIDTH,IMG_CHANNELS):
-        inputs = tf.keras.layers.Input((IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
+    def get_model(self, height, width, img_channels):
+        '''Used to build Unet model architecture'''
+        inputs = tf.keras.layers.Input((height, width, img_channels))
         s = tf.keras.layers.Lambda(lambda x: x / 255)(inputs)
         
         #Encoder path

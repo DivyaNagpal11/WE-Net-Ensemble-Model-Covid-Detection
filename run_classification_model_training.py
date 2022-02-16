@@ -3,7 +3,7 @@
 """
 Pass arguments that are needed to process files
 argument 1: Source path for input images
-argument 2: Dest path for saving models
+argument 2: Destination path for saving models
 argument 3: Model to run
 """
 
@@ -11,7 +11,7 @@ from classification.train_transfer_learning_model import TrainClassification
 import argparse
 
 
-parser = argparse.ArgumentParser(description='Run Preprocessing for Segmentation')
+parser = argparse.ArgumentParser(description='Train transfer learning architectures for classification')
 
 parser.add_argument("-sp", "--source_path", 
                     required=True, 

@@ -24,6 +24,7 @@ class ImagePreprocessing:
     
     
     def get_images(self, path):
+        '''Used to fetch image ids in the provided path'''
         image_paths = [os.path.join(path, f) for f in os.listdir(path)]
         image_ids = []
         for image_path in image_paths:
@@ -33,11 +34,13 @@ class ImagePreprocessing:
 
 
     def get_ids(self):
+        '''Used to trigger get_images() to fetch ids in the provided path'''
         self.cxr_ids = self.get_images(self.image_path)
         self.lung_masks_ids = self.get_images(self.mask_path)
         
     
     def find_missing_ids(self):
+        '''Used to fetch missing image ids and lung masks ids in the provided path'''
         k=0
         print('List image ids that do not have a corresponding lung mask: ')
         for n, id_ in tqdm(enumerate(self.cxr_ids), total=len(self.cxr_ids)):
@@ -58,6 +61,7 @@ class ImagePreprocessing:
         
         
     def merge_masks(self):
+        '''Used to merge left and right lung masks in a single image and save it'''
         img_height = img_width = 256
         
         if path.exists(self.merged_mask_path)==False:
@@ -88,6 +92,7 @@ class ImagePreprocessing:
             
             
     def adap_equalize(self, img):
+        '''Used to perform CLAHE for the given image'''
         clahe = cv2.createCLAHE(clipLimit=3.5, tileGridSize=(8,8))
         try: 
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -99,6 +104,7 @@ class ImagePreprocessing:
          
     
     def image_manipulations(self, in_img_path, dim, mask):
+        '''Used to perform image manipulations techniques for the given image'''
         image = cv2.imread(in_img_path,0)
         img = image 
         
@@ -118,6 +124,7 @@ class ImagePreprocessing:
 
 
     def get_manipulated_image(self, ids, in_dir, out_dir, mask):
+        '''Used to trigger image_manipulations() function for the images and save them'''
         makedirs(out_dir)
         img_width = 256
         for n, id_ in tqdm(enumerate(ids), total=len(ids)):   
@@ -128,6 +135,7 @@ class ImagePreprocessing:
         
         
     def data_split(self):
+        '''Used to split datasets into train, val and test datasets'''
         cxrs = 'prep_cxrs/'
         lung_masks = 'LungsMasks/'
 
@@ -148,6 +156,7 @@ class ImagePreprocessing:
         
     
     def augment_train_data(self):
+        '''Used to augment both images and corresponding masks in the train dataset'''
         n_times = 3
         img_width, img_height = 256
         
@@ -224,6 +233,7 @@ class ImagePreprocessing:
         
         
     def run_preprocessing(self):
+        '''Used to trigger functions'''
         self.get_ids()
         self.find_missing_ids()
         self.merge_masks()

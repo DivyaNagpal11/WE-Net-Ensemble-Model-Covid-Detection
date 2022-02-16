@@ -1,14 +1,10 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sat Sep 25 09:38:35 2021
 
-@author: DN067571
-"""
+'''Used for ROC - AUC Confidence Interval'''
 
 import numpy as np
 import scipy.stats
 from scipy import stats
-
 
 def compute_midrank(x):
     """Computes midranks.
@@ -29,8 +25,6 @@ def compute_midrank(x):
         T[i:j] = 0.5*(i + j - 1)
         i = j
     T2 = np.empty(N, dtype=np.float)
-    # Note(kazeevn) +1 is due to Python using 0-based indexing
-    # instead of 1-based in the AUC formula in the paper
     T2[J] = T + 1
     return T2
 
@@ -75,20 +69,8 @@ def fastDeLong_weights(predictions_sorted_transposed, label_1_count, sample_weig
           sorted such as the examples with label "1" are first
     Returns:
        (AUC value, DeLong covariance)
-    Reference:
-     @article{sun2014fast,
-       title={Fast Implementation of DeLong's Algorithm for
-              Comparing the Areas Under Correlated Receiver Oerating Characteristic Curves},
-       author={Xu Sun and Weichao Xu},
-       journal={IEEE Signal Processing Letters},
-       volume={21},
-       number={11},
-       pages={1389--1393},
-       year={2014},
-       publisher={IEEE}
-     }
     """
-    # Short variables are named as they are in the paper
+   
     m = label_1_count
     n = predictions_sorted_transposed.shape[1] - m
     positive_examples = predictions_sorted_transposed[:, :m]
@@ -124,21 +106,8 @@ def fastDeLong_no_weights(predictions_sorted_transposed, label_1_count):
           sorted such as the examples with label "1" are first
     Returns:
        (AUC value, DeLong covariance)
-    Reference:
-     @article{sun2014fast,
-       title={Fast Implementation of DeLong's Algorithm for
-              Comparing the Areas Under Correlated Receiver Oerating
-              Characteristic Curves},
-       author={Xu Sun and Weichao Xu},
-       journal={IEEE Signal Processing Letters},
-       volume={21},
-       number={11},
-       pages={1389--1393},
-       year={2014},
-       publisher={IEEE}
-     }
     """
-    # Short variables are named as they are in the paper
+
     m = label_1_count
     n = predictions_sorted_transposed.shape[1] - m
     positive_examples = predictions_sorted_transposed[:, :m]

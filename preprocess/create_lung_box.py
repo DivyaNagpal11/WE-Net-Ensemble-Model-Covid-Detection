@@ -37,13 +37,16 @@ import random
 
 class LungBox:
     
-    def __init__(self, image_path, dest_path):
+    def __init__(self, image_path, dest_path, model_path, model_name):
         self.image_path = image_path
         self.dest_path = dest_path
+        self.model_path = model_path
+        self.model_name = model_name
         self.dim = 256
         
-        
+           
     def get_images(self, path):
+        '''Used to fetch image ids in the provided path'''
         image_paths = [os.path.join(path, f) for f in os.listdir(path)]
         image_ids = []
         for image_path in image_paths:
@@ -51,8 +54,9 @@ class LungBox:
             image_ids.append(image_id)
         return image_ids
     
-    
+     
     def adap_equalize(self, img):
+        '''Used to perform CLAHE for the given image'''
         clahe = cv2.createCLAHE(clipLimit=3.5, tileGridSize=(8,8))
         try: 
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -62,9 +66,10 @@ class LungBox:
         img = clahe.apply(img)
         return img
     
-
-    def adap_resize(self, in_path, out_dirr, idss): 
-        for n, id_ in tqdm(enumerate(idss), total=len(idss)):
+    
+    def adap_resize(self, in_path, out_dirr, ids): 
+        '''Used to resize and apply CLAHE on the given set of images ids''' 
+        for n, id_ in tqdm(enumerate(ids), total=len(ids)):
             name = id_ + '.png'
             img_out = cv2.imread(in_path + name, 0)  
            
@@ -81,8 +86,10 @@ class LungBox:
         # This function performs opening for an given image.
         # Opening is essentially acheived by applying two filters:
         #     Erosion followed by dialiation
-        # i. Erosion : Expands the features removing noise
-        # ii. Dialtion : Shrinks the feature and also useful in joining broken parts of an object
+        # 
+        # i.)  Erosion : Expands the features removing noise
+        # ii.) Dialtion : Shrinks the feature and also useful in joining broken parts of an object
+        # 
         # In cases like noise removal, erosion is followed by dilation. 
         # Because, erosion removes white noises, but it also shrinks our object. 
         # So we dilate it. Since noise is gone, they won’t come back, but our object area increases.
@@ -91,7 +98,6 @@ class LungBox:
         # -------
         # opening : Openned image i.e smoothed and shrinked the expanded features of the image.
         '''
-    
         rectkernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 3))
         sqkernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
         elpscekrnl1 =  cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(13,13))
@@ -138,6 +144,7 @@ class LungBox:
 
     
     def plot(self, img, mask, show_img, crop, _id):
+        '''Used to plot raw image with predicted lung mask, followed by bounding box and cropped image'''
         plt.clf() 
         plt.figure(figsize=(12, 4))
         plt.subplot(141)
@@ -157,7 +164,6 @@ class LungBox:
         plt.imshow(crop, cmap='gray')
         plt.savefig('/imgs/'+_id+'.png')
 
-        
         
     def create_lung_box(self, cxr, mask, _id):
         """
@@ -239,7 +245,9 @@ class LungBox:
         return crop, ratio
     
     
-    def prep_cxr_classification(self, in_path, out_dir, ids, seg_model):
+    def preprocessing(self, in_path, out_dir, ids, seg_model):
+        '''This function reads the images, triggers the image preprocessing 
+        functions, and creates a lung box using segmentation model'''
         x = np.zeros((len(ids), self.dim, self.dim), dtype=np.uint8) 
         for n, id_ in tqdm(enumerate(ids), total=len(ids)):
             name = id_ + '.png'
@@ -278,10 +286,9 @@ class LungBox:
     
     def load_seg_model(self, modelpath, modelname):
         '''
-        Load a model, given the model path and its name, where the given path contains
+        Loads a model
            -> a YAML file to load the model architecture
            -> a .h5/hdf5 file to load the pretrained model weights
-    
         '''
         yaml_file = open(modelpath + modelname + '.yaml', 'r')
         model_yaml = yaml_file.read()
@@ -292,10 +299,12 @@ class LungBox:
     
     
     def get_folders(self, path):
+        '''Fetches the folders in the given directory'''
         return next(os.walk(path))[1]
     
     
     def create_folder_structure(self, out_path, class_):
+        '''Creates a folder structure for storing train, val and test datasets'''
         train_path = out_path + '/train/'
         test_path =  out_path + '/test/'
         val_path =  out_path + '/val/'
@@ -312,10 +321,10 @@ class LungBox:
 
 
     def create_bounding_box(self):
-        modelpath = os.getcwd() + "/256_b32_X3726_09-08__07-41-52/"
-        modelname = "clahe_gausblur_3Xaug_unet_lungs_segmtn"
-
-        model = self.load_seg_model(modelpath,modelname)
+        '''Used for splitting the dataset into train, val and test folders.
+           Also used for triggering the preprocessing pipeline of getting the cropped region of interest'''
+        
+        model = self.load_seg_model(self.model_path, self.model_name)
         cropped = False
         classes = self.get_folders(self.image_path)
          
@@ -331,9 +340,9 @@ class LungBox:
             val_ids, test_ids  = train_test_split(test_val_ids, test_size=0.5, shuffle=True)
                   
             if cropped == False:
-                self.prep_cxr_classification(class_in_path, class_train_out, train_ids, model, self.dim)
-                self.prep_cxr_classification(class_in_path, class_val_out, val_ids, model, self.dim)
-                self.prep_cxr_classification(class_in_path, class_test_out, test_ids, model, self.dim)
+                self.preprocessing(class_in_path, class_train_out, train_ids, model, self.dim)
+                self.preprocessing(class_in_path, class_val_out, val_ids, model, self.dim)
+                self.preprocessing(class_in_path, class_test_out, test_ids, model, self.dim)
              
             else:
                 self.adap_resize(class_in_path, class_train_out, train_ids, self.dim)

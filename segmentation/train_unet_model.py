@@ -28,6 +28,7 @@ class TrainSegmentation:
     
     
     def get_images(self, path):
+        '''Used to fetch image ids in the provided path'''
         image_paths = [os.path.join(path, f) for f in os.listdir(path)]
         image_ids = []
         for image_path in image_paths:
@@ -37,6 +38,7 @@ class TrainSegmentation:
         
     
     def load_images_and_masks(self, path, ids):
+        '''Used to load images and their coressponding masks'''
         cxrs = 'prep_cxrs/'
         lung_masks = 'LungsMasks/'
     
@@ -61,6 +63,7 @@ class TrainSegmentation:
 
 
     def append_multiple_lines(self, file_name, lines_to_append):
+        '''Used to write content to a file'''
         with open(file_name, "a+") as file_object:
             appendEOL = False
             file_object.seek(0)
@@ -76,6 +79,7 @@ class TrainSegmentation:
     
     
     def confusion_matrix_seg(self, y_true, y_pred_t, setname, mydir):
+        '''Used to generate confusion matrix and some other performance evaluation metrics like IoU Score'''
         tp = np.logical_and(y_true==True, y_pred_t==True)
         tn = np.logical_and(y_true==False, y_pred_t==False)
         fp = np.logical_and(y_true==True, y_pred_t==False)
@@ -108,6 +112,7 @@ class TrainSegmentation:
                   
              
     def plot(self, pred, x_img, y_truth, mydir, id_):
+        '''Used to plot the test image along with its ground truth and geenrated prediction comparison'''
         plt.cla()
         plt.clf() 
         plt.figure(figsize=(16, 8))
@@ -116,7 +121,7 @@ class TrainSegmentation:
         plt.imshow(x_img, cmap='gray')
         
         plt.subplot(232)
-        plt.title('Testing Label')
+        plt.title('Ground truth')
         plt.imshow(x_img*y_truth, cmap='gray')
         
         plt.subplot(233)
@@ -124,10 +129,9 @@ class TrainSegmentation:
         plt.imshow(x_img*pred, cmap='gray')
         plt.savefig(mydir + id_ +'_cxr_segmt.png')
         
-        
-    def training(self):
-        img_channels = 1
-        
+    
+    def get_data(self):
+        '''Used to read data from the folders'''
         train_path = self.source_path + '/train/'
         val_path =  self.source_path + '/val/'
         test_path =  self.source_path + '/test/'
@@ -149,10 +153,18 @@ class TrainSegmentation:
         x_test = np.expand_dims(np.array(x_test), axis = -1)
         y_test = np.expand_dims(np.array(y_test), axis = -1)
         
+        return x_train, y_train, x_val, y_val, x_test, y_test
+        
+    def training(self):
+        '''Used for training the unet model'''
+        img_channels = 1
+        
+        x_train, y_train, x_val, y_val, x_test, y_test = self.get_data()
+        
         model = um.get_model(self.height, self.width, img_channels)
         model.summary()
         
-        # view the trainable layers of the model
+        # View the trainable layers of the model
         for i, layers in enumerate(model.layers):
             print(i,layers.name, "-", layers.trainable)
         
@@ -181,7 +193,7 @@ class TrainSegmentation:
         with open( modelname + ".yaml", "w") as yaml_file:
             yaml_file.write(model_yaml)
             
-        # serialize weights to HDF5
+        # Serialize weights to HDF5
         model.save_weights(modelname + ".h5")
         print("Saved model to disk")
         
@@ -199,14 +211,14 @@ class TrainSegmentation:
         
         self.append_multiple_lines(result_dir + 'modelsummary.txt', line)
         
-        # convert the history.history dict to a pandas DataFrame:     
+        # Convert the history.history dict to a pandas DataFrame:     
         hist_df = pd.DataFrame(history.history) 
-        # save to csv: 
+        # Save to csv: 
         hist_csv_file =result_dir +  'history.csv'
         with open(hist_csv_file, mode='w') as f:
             hist_df.to_csv(f)
         
-        
+        # Get predictions
         preds_train = model.predict(x_train, verbose=1)
         preds_val = model.predict(x_val, verbose=1)
         preds_test = model.predict(x_test, verbose=1)
@@ -215,7 +227,7 @@ class TrainSegmentation:
         preds_val_t = (preds_val > 0.5).astype(np.uint8)
         preds_test_t = (preds_test > 0.5).astype(np.uint8)
         
-        #Results
+        # Get results
         print("Test_res: ")
         test_res = self.confusion_matrix_seg(y_test, preds_test_t, nameof(preds_test_t), result_dir)
         
@@ -236,4 +248,4 @@ class TrainSegmentation:
         
         # Perform a sanity check on some random test samples
         ix = random.randint(0, len(preds_test_t))
-        self.plot(preds_test_t[ix], x_test[ix], y_test[ix], result_dir, test_ids[ix])
+        self.plot(preds_test_t[ix], x_test[ix], y_test[ix], result_dir, self.get_images(self.source_path + '/test/')[ix])
